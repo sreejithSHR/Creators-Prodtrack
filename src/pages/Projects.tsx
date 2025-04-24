@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import CreateProjectDialog from '../components/CreateProjectDialog';
@@ -41,6 +41,11 @@ export default function Projects() {
 
   const handleProjectClick = (project: Project) => {
     navigate(`/projects/${project.id}/scenes`);
+  };
+
+  const handleScriptClick = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    navigate(`/projects/${projectId}/script`);
   };
 
   const handleEditProject = (project: Project) => {
@@ -104,12 +109,21 @@ export default function Projects() {
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {projects.map((project) => (
-                  <div key={project.id} onClick={() => handleProjectClick(project)} className="cursor-pointer">
-                    <ProjectCard
-                      project={project}
-                      onEdit={handleEditProject}
-                      onDelete={handleDeleteProject}
-                    />
+                  <div key={project.id} className="relative">
+                    <div onClick={() => handleProjectClick(project)} className="cursor-pointer">
+                      <ProjectCard
+                        project={project}
+                        onEdit={handleEditProject}
+                        onDelete={handleDeleteProject}
+                      />
+                    </div>
+                    <button
+                      onClick={(e) => handleScriptClick(e, project.id)}
+                      className="absolute top-4 right-4 p-2 bg-white rounded-full shadow hover:bg-gray-50"
+                      title="Open Script"
+                    >
+                      <FileText className="h-5 w-5 text-gray-600" />
+                    </button>
                   </div>
                 ))}
               </div>

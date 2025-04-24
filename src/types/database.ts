@@ -28,10 +28,10 @@ export interface Shot {
   type: string;
   duration: string | null;
   description: string | null;
-  dialogue: text
-  scene_name: text
-  day_setting: text  // e.g., "Day", "Night"
-  location: text
+  dialogue: string;
+  scene_name: string;
+  day_setting: string;
+  location: string;
   order: number;
   whiteboard_data: any | null;
   whiteboard_image_url: string | null;
@@ -45,4 +45,16 @@ export interface Script {
   updated_at: string;
   project_id: string;
   content: string | null;
+}
+
+export interface ScriptPage {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  script_id: string;
+  parent_id: string | null;
+  title: string;
+  content: any;
+  order: number;
+  icon: string | null;
 }

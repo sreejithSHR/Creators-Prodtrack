@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Loader2, FileText } from 'lucide-react';
+import { Plus, Loader2, FileText, Network } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import CreateProjectDialog from '../components/CreateProjectDialog';
@@ -46,6 +46,11 @@ export default function Projects() {
   const handleScriptClick = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     navigate(`/projects/${projectId}/script`);
+  };
+
+  const handleMindMapClick = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    navigate(`/projects/${projectId}/mindmap`);
   };
 
   const handleEditProject = (project: Project) => {
@@ -115,15 +120,25 @@ export default function Projects() {
                         project={project}
                         onEdit={handleEditProject}
                         onDelete={handleDeleteProject}
+                        onMindMap={(e) => handleMindMapClick(e, project.id)}
                       />
                     </div>
-                    <button
-                      onClick={(e) => handleScriptClick(e, project.id)}
-                      className="absolute top-4 right-4 p-2 bg-white rounded-full shadow hover:bg-gray-50"
-                      title="Open Script"
-                    >
-                      <FileText className="h-5 w-5 text-gray-600" />
-                    </button>
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      <button
+                        onClick={(e) => handleMindMapClick(e, project.id)}
+                        className="p-2 bg-white rounded-full shadow hover:bg-gray-50"
+                        title="Open Mind Map"
+                      >
+                        <Network className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={(e) => handleScriptClick(e, project.id)}
+                        className="p-2 bg-white rounded-full shadow hover:bg-gray-50"
+                        title="Open Script"
+                      >
+                        <FileText className="h-5 w-5 text-gray-600" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

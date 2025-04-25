@@ -6,26 +6,27 @@ interface ProjectCardProps {
   project: Project;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
+  onMindMap: (e: React.MouseEvent) => void;
 }
 
-export default function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
+export default function ProjectCard({ project, onEdit, onDelete, onMindMap }: ProjectCardProps) {
   const [showMenu, setShowMenu] = useState(false);
 
   const ProjectIcon = project.type === 'video' ? Film : Gamepad2;
 
   const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click when clicking menu
+    e.stopPropagation();
     setShowMenu(!showMenu);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click when clicking edit
+    e.stopPropagation();
     onEdit(project);
     setShowMenu(false);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click when clicking delete
+    e.stopPropagation();
     onDelete(project);
     setShowMenu(false);
   };

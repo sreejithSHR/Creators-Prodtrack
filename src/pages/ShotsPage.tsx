@@ -164,7 +164,6 @@ export default function ShotsPage() {
         </div>
       </main>
 
-      {/* Shot Editor Modal */}
       {selectedShot && (
         <ShotEditor
           shot={selectedShot}
@@ -184,7 +183,6 @@ export default function ShotsPage() {
         />
       )}
 
-      {/* Slideshow Modal */}
       {showSlideshow && (
         <SlideshowViewer
           shots={shots}

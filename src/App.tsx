@@ -10,6 +10,7 @@ const Scenes = React.lazy(() => import('./pages/Scenes'));
 const ShotsPage = React.lazy(() => import('./pages/ShotsPage'));
 const Shots = React.lazy(() => import('./pages/Shots'));
 const Script = React.lazy(() => import('./pages/Script'));
+const MindMap = React.lazy(() => import('./pages/MindMap'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 
 const LoadingSpinner = () => (
@@ -39,6 +40,7 @@ function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId/scenes" element={<Scenes />} />
               <Route path="/projects/:projectId/script" element={<Script />} />
+              <Route path="/projects/:projectId/mindmap" element={<MindMap />} />
               <Route path="/scenes/:sceneId/shots" element={<ShotsPage />} />
               <Route path="/shots" element={<Shots />} />
               <Route path="*" element={<Navigate to="/" replace />} />
@@ -55,4 +57,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

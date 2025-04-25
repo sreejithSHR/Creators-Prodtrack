@@ -7,6 +7,7 @@ export interface Project {
   user_id: string;
   public_share_id: string | null;
   is_completed: boolean;
+  mindmap_data: string | null;
 }
 
 export interface Scene {

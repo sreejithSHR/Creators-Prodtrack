@@ -1,113 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save,
   Loader2,
   ArrowLeft,
-  Bold as BoldIcon,
-  Italic as ItalicIcon,
-  Underline as UnderlineIcon,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
+  Bold,
+  Italic,
+  Underline,
+  Heading1,
+  Heading2,
   List,
   ListOrdered,
   Quote,
-  Table as TableIcon,
-  Highlighter,
-  Heading1,
-  Heading2,
+  Code,
+  Minus,
+  Download,
 } from 'lucide-react';
-
-import { useEditor, EditorContent } from '@tiptap/react';
-import Document from '@tiptap/extension-document';
-import Paragraph from '@tiptap/extension-paragraph';
-import Text from '@tiptap/extension-text';
-import Heading from '@tiptap/extension-heading';
-import Bold from '@tiptap/extension-bold';
-import Italic from '@tiptap/extension-italic';
-import Underline from '@tiptap/extension-underline';
-import Strike from '@tiptap/extension-strike';
-import TextAlign from '@tiptap/extension-text-align';
-import Highlight from '@tiptap/extension-highlight';
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
-import FontFamily from '@tiptap/extension-font-family';
-import Subscript from '@tiptap/extension-subscript';
-import Superscript from '@tiptap/extension-superscript';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import BulletList from '@tiptap/extension-bullet-list';
-import OrderedList from '@tiptap/extension-ordered-list';
-import ListItem from '@tiptap/extension-list-item';
-import Blockquote from '@tiptap/extension-blockquote';
-import CodeBlock from '@tiptap/extension-code-block';
-import HorizontalRule from '@tiptap/extension-horizontal-rule';
-
 import { supabase } from '../lib/supabase';
 import NavBar from '../components/NavBar';
+import html2pdf from 'html2pdf.js';
 
-interface SceneDetails {
-  name: string;
-  location: string;
-  timeOfDay: string;
-  description: string;
+interface ScriptContent {
+  text: string;
+  metadata?: {
+    title?: string;
+    description?: string;
+    notes?: string;
+  };
 }
-
-const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
-const fonts = ['Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'];
 
 export default function Script() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const pdfRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectName, setProjectName] = useState('');
   const [scriptId, setScriptId] = useState<string | null>(null);
-  const [sceneDetails, setSceneDetails] = useState<SceneDetails>({
-    name: '',
-    location: '',
-    timeOfDay: 'Day',
-    description: '',
+  const [content, setContent] = useState<ScriptContent>({
+    text: '',
+    metadata: { title: '', description: '', notes: '' },
   });
-
-  const editor = useEditor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      Heading.configure({ levels: [1, 2, 3] }),
-      Bold,
-      Italic,
-      Underline,
-      Strike,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Highlight,
-      TextStyle,
-      Color,
-      FontFamily,
-      Subscript,
-      Superscript,
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableCell,
-      TableHeader,
-      BulletList,
-      OrderedList,
-      ListItem,
-      Blockquote,
-      CodeBlock,
-      HorizontalRule,
-    ],
-    editorProps: {
-      attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] p-4',
-      },
-    },
-  });
+  const [autoSave, setAutoSave] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -134,19 +71,11 @@ export default function Script() {
         if (scripts && scripts.length > 0) {
           const script = scripts[0];
           setScriptId(script.id);
-
           try {
-            const savedData = JSON.parse(script.content || '{}');
-            if (savedData.sceneDetails) {
-              setSceneDetails(savedData.sceneDetails);
-            }
-            if (savedData.scriptContent && editor) {
-              editor.commands.setContent(savedData.scriptContent);
-            }
-          } catch (e) {
-            if (editor) {
-              editor.commands.setContent(script.content || '');
-            }
+            const parsedContent = JSON.parse(script.content || '{}');
+            setContent(parsedContent);
+          } catch {
+            setContent({ text: script.content || '', metadata: {} });
           }
         }
       } catch (err) {
@@ -157,35 +86,40 @@ export default function Script() {
     }
 
     loadData();
-  }, [projectId, editor]);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!autoSave) return;
+    const timeout = setTimeout(() => handleSave(), 3000);
+    return () => clearTimeout(timeout);
+  }, [content, autoSave]);
 
   const handleSave = async () => {
-    if (!projectId || !editor) return;
+    if (!projectId) return;
 
     setSaving(true);
     setError(null);
 
-    const saveContent = JSON.stringify({
-      sceneDetails,
-      scriptContent: editor.getHTML(),
-    });
-
     try {
+      const scriptContent = JSON.stringify(content);
+
       if (scriptId) {
         await supabase
           .from('scripts')
-          .update({ content: saveContent })
+          .update({ content: scriptContent })
           .eq('id', scriptId);
       } else {
         const { data, error } = await supabase
           .from('scripts')
-          .insert({ project_id: projectId, content: saveContent })
+          .insert({ project_id: projectId, content: scriptContent })
           .select()
           .single();
 
         if (error) throw error;
         setScriptId(data.id);
       }
+
+      setLastSaved(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save script');
     } finally {
@@ -193,11 +127,63 @@ export default function Script() {
     }
   };
 
+  const handleFormat = (format: string) => {
+    const textarea = document.getElementById('script-editor') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.text.substring(start, end);
+    let formattedText = '';
+
+    switch (format) {
+      case 'bold':
+        formattedText = `**${selectedText}**`; break;
+      case 'italic':
+        formattedText = `_${selectedText}_`; break;
+      case 'underline':
+        formattedText = `__${selectedText}__`; break;
+      case 'h1':
+        formattedText = `# ${selectedText}`; break;
+      case 'h2':
+        formattedText = `## ${selectedText}`; break;
+      case 'bullet':
+        formattedText = selectedText.split('\n').map(line => `- ${line}`).join('\n'); break;
+      case 'number':
+        formattedText = selectedText.split('\n').map((line, i) => `${i + 1}. ${line}`).join('\n'); break;
+      case 'quote':
+        formattedText = selectedText.split('\n').map(line => `> ${line}`).join('\n'); break;
+      case 'code':
+        formattedText = `\`${selectedText}\``; break;
+      case 'hr':
+        formattedText = `\n---\n`; break;
+      default:
+        return;
+    }
+
+    const newText = content.text.substring(0, start) + formattedText + content.text.substring(end);
+    setContent({ ...content, text: newText });
+  };
+
+  const handleExportPDF = () => {
+    if (!pdfRef.current) return;
+
+    html2pdf()
+      .from(pdfRef.current)
+      .set({
+        margin: 0.5,
+        filename: `${projectName}-script.pdf`,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      })
+      .save();
+  };
+
   if (loading) {
     return (
       <>
         <NavBar />
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
           <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
         </div>
       </>
@@ -209,7 +195,7 @@ export default function Script() {
       <NavBar />
       <div className="min-h-screen bg-gray-50">
         <div className="sticky top-0 z-10 bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4">
             <div className="py-4 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
@@ -223,64 +209,99 @@ export default function Script() {
                   {projectName} - Script
                 </h1>
               </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-50"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </button>
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-500">
+                  {lastSaved && `Last saved: ${lastSaved.toLocaleTimeString()}`}
+                </div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={autoSave}
+                    onChange={(e) => setAutoSave(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm text-gray-600">Auto-save</span>
+                </label>
+                <button
+                  onClick={handleExportPDF}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export PDF
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving...</> :
+                    <><Save className="h-4 w-4 mr-2" /> Save</>}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {error && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md">
-              {error}
-            </div>
-          </div>
-        )}
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-white rounded-lg shadow">
-            {/* Rich Text Editor Toolbar */}
-            <div className="border-b p-2 flex flex-wrap gap-2">
-              <div className="flex items-center gap-1 border-r pr-2">
-                <button
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                  className={`p-1 rounded hover:bg-gray-100 ${editor?.isActive('bold') ? 'bg-gray-200' : ''}`}
-                >
-                  <BoldIcon className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                  className={`p-1 rounded hover:bg-gray-100 ${editor?.isActive('italic') ? 'bg-gray-200' : ''}`}
-                >
-                  <ItalicIcon className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                  className={`p-1 rounded hover:bg-gray-100 ${editor?.isActive('underline') ? 'bg-gray-200' : ''}`}
-                >
-                  <UnderlineIcon className="w-5 h-5" />
-                </button>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="bg-white rounded-lg shadow" ref={pdfRef}>
+            
+            <div className="p-4 border-b space-y-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <div className="p-4 border ">
+              <input
+                type="text"
+                value={content.metadata?.title || ''}
+                onChange={(e) => setContent({ ...content, metadata: { ...content.metadata, title: e.target.value } })}
+                className="w-full text-2xl font-semibold   focus:outline-none"
+                placeholder="Script Title"
+              />
               </div>
-
-              {/* More toolbar buttons... */}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <div className="p-4 border ">
+              <input
+                type="text"
+                value={content.metadata?.description || ''}
+                onChange={(e) => setContent({ ...content, metadata: { ...content.metadata, description: e.target.value } })}
+                className="w-full text-base text-gray-600 "
+                placeholder="Description"
+              />
+              </div>
+                
             </div>
 
-            <EditorContent editor={editor} />
+            <div className="border-b p-2 flex flex-wrap gap-2">
+              {['bold', 'italic', 'underline', 'h1', 'h2', 'bullet', 'number', 'quote', 'code', 'hr'].map((type, i) => {
+                const Icon = {
+                  bold: Bold, italic: Italic, underline: Underline, h1: Heading1,
+                  h2: Heading2, bullet: List, number: ListOrdered, quote: Quote,
+                  code: Code, hr: Minus
+                }[type];
+                return (
+                  <button key={i} onClick={() => handleFormat(type)} className="p-2 hover:bg-gray-100 rounded" title={type}>
+                    {Icon && <Icon className="h-5 w-5" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="p-4">
+              <textarea
+                id="script-editor"
+                value={content.text}
+                onChange={(e) => setContent({ ...content, text: e.target.value })}
+                className="w-full min-h-[300px] p-4 border rounded-md font-mono focus:outline-none"
+                placeholder="Start writing your script..."
+              />
+            </div>
+
+            <div className="p-4 border-t">
+              <textarea
+                value={content.metadata?.notes || ''}
+                onChange={(e) => setContent({ ...content, metadata: { ...content.metadata, notes: e.target.value } })}
+                className="w-full h-24 p-3 border rounded-md"
+                placeholder="Notes..."
+              />
+            </div>
           </div>
         </div>
       </div>
